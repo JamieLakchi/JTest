@@ -18,8 +18,8 @@ I don't like GTest. There's some setup work to do, and you need to remake it if 
 3. Make your .cpp files and run the executable.
 
 To see an example output, in exampleUse1 run: 
-                                - `cmake . && make && clear && ./runAllTests` on Linux
-                                - `cmake -G "MinGW Makefiles" . && make && cls && runAllTests.exe` on Windows
+- `cmake . && make && clear && ./runAllTests` on Linux
+- `cmake -G "MinGW Makefiles" . && make && cls && runAllTests.exe` on Windows
 
 ### Without CMake (see `exampleUse2/`): 
 1. create all your tests in .h files.
@@ -28,8 +28,8 @@ To see an example output, in exampleUse1 run:
 4. Compile the .cpp and run the executable.
 
 To see an example output, in exampleUse2 run:
-                                - `g++ main.cpp -o runAllTests && clear && ./runAllTests` on Linux
-                                - `g++ main.cpp -o runAllTests && cls && runAllTests.exe` on Windows
+- `g++ main.cpp -o runAllTests && clear && ./runAllTests` on Linux
+- `g++ main.cpp -o runAllTests && cls && runAllTests.exe` on Windows
 
 ***If your console does not support ANSI characters, compile the tests
 with the `NO_ANSI_CONSOLE` macro defined (if you're using g++, add
