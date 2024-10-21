@@ -1,0 +1,8 @@
+exampleUse1/*
+!exampleUse1/*.h
+!exampleUse1/*.cpp
+!exampleUse1/CMakeLists.txt
+exampleUse2/*
+!exampleUse2/*.h
+!exampleUse2/*.cpp
+
