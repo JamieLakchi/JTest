@@ -3,10 +3,13 @@
  * Author: Jamie Lakchi
  * Date: 21/10/2024
  * Description: These are the building blocks for a generic testing suite
- * Version: 1.0.0
+ * Version: 1.0.1
  *
  * Change History:
  *  - 21/10/2024: Jamie Lakchi - Initial creation of the file
+ *  - 22/10/2024: Jamie Lakchi - Removed nested try-catch block from
+ *                               EXPECT_ERRORTYPE, added explicit constructor to
+ *                               Test
  */
 
 /**
@@ -161,11 +164,9 @@
 // exception is not of type ERR_TYPE
 #define EXPECT_ERRORTYPE(ERR_TYPE, ACTION)                                     \
   try {                                                                        \
-    try {                                                                      \
-      ACTION;                                                                  \
-      ++_t.nrOfTestsFailed;                                                    \
-    } catch (ERR_TYPE & e) {                                                   \
-    }                                                                          \
+    ACTION;                                                                    \
+    ++_t.nrOfTestsFailed;                                                      \
+  } catch (ERR_TYPE & e) {                                                     \
   } catch (...) {                                                              \
     ++_t.nrOfTestsFailed;                                                      \
   }
@@ -177,7 +178,7 @@ struct Test;
 #define JTEST(testname)                                                        \
   void CONCAT(test_, testname)(Test & _t);                                     \
   bool CONCAT(dummy_, testname) = TestRegistry::registerTest(                  \
-      GETFILE, {TOSTRING(testname), CONCAT(test_, testname)});                 \
+      GETFILE, Test{TOSTRING(testname), CONCAT(test_, testname)});             \
   void CONCAT(test_, testname)(Test & _t)
 
 using TestFunction = std::function<void(Test &_t)>;
@@ -185,6 +186,7 @@ using TestFunction = std::function<void(Test &_t)>;
 // this struct should never be created manually
 // it's elements are accessible in a JTEST block but shouldn't be changed
 struct Test {
+  Test(std::string &&s, TestFunction tfunc) : name(s), func(tfunc){};
   std::string name;
   TestFunction func;
   int nrOfTestsFailed = 0;
