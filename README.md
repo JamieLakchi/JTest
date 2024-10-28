@@ -41,6 +41,7 @@ All tests in one file are combined into a batch, the name of the batch will
 be displayed before the tests are run.
 
 Batches are run in alphabetical order.
+Subbatches are also run in alphabetical order.
 
 To create a test use the `JTEST(test name){ ... }` macro:
 
@@ -58,6 +59,27 @@ JTEST(addition){
 This example will perform 4 checks (1 per `EXPECT`).
 If 1 of these checks fails, the whole test will register as a failure and the
 console will say how many expectations weren't met.
+
+Or use the `JTEST(subbatch name, test name) { ... }` macro:
+
+```cpp
+JTEST(operator, lessthan){
+  EXPECT_TRUE(5 < 12);
+  EXPECT_TRUE(-6 < -3);
+}
+
+JTEST(operator, greaterthan){
+  EXPECT_TRUE(4 > 3);
+  EXPECT_TRUE(-9 > -17);
+}
+```
+
+This example will also perform 4 checks (over 2 tests).
+If a test fails only that test will register as a failure, not the entire subbatch.
+
+Before a subbatch is run it's name will be printed as `< NAME >`.
+If a batch has some tests that are part of a subbatch and tests that aren't part of one,
+the tests outside of a subbatch will be grouped together into a subbatch called `< MISC >`.
 
 There are 6 `EXPECT` macros you can use:
 - `EXPECT_EQ(inp1, inp2)`: will add a fail if (inp1) != (inp2)
