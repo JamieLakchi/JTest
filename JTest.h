@@ -10,6 +10,7 @@
  *  - 22/10/2024: Jamie Lakchi - Removed nested try-catch block from
  *                               EXPECT_ERRORTYPE, added explicit constructor to
  *                               Test
+ *  - 28/10/2024: Jamie Lakchi - created subbatch system
  */
 
 #ifndef INC_JTEST_HPP
@@ -65,48 +66,60 @@
 
 // will add a fail if inp1 != inp2
 #define EXPECT_EQ(inp1, inp2)                                                  \
-  if ((inp1) != (inp2)) {                                                      \
-    ++_t.nrOfTestsFailed;                                                      \
-  }
+  do {                                                                         \
+    if ((inp1) != (inp2)) {                                                    \
+      ++_t.nrOfTestsFailed;                                                    \
+    }                                                                          \
+  } while (false)
 
 // will add a fail if !(inp1) == true
 #define EXPECT_TRUE(inp1)                                                      \
-  if (!(inp1)) {                                                               \
-    ++_t.nrOfTestsFailed;                                                      \
-  }
+  do {                                                                         \
+    if (!(inp1)) {                                                             \
+      ++_t.nrOfTestsFailed;                                                    \
+    }                                                                          \
+  } while (false)
 
 // will add a fail if inp1 == true
 #define EXPECT_FALSE(inp1)                                                     \
-  if ((inp1)) {                                                                \
-    ++_t.nrOfTestsFailed;                                                      \
-  }
+  do {                                                                         \
+    if ((inp1)) {                                                              \
+      ++_t.nrOfTestsFailed;                                                    \
+    }                                                                          \
+  } while (false)
 
 // will fail if inp1 throws an exception
 #define EXPECT_LIFE(ACTION)                                                    \
-  try {                                                                        \
-    ACTION;                                                                    \
-  } catch (...) {                                                              \
-    ++_t.nrOfTestsFailed;                                                      \
-  }
+  do {                                                                         \
+    try {                                                                      \
+      ACTION;                                                                  \
+    } catch (...) {                                                            \
+      ++_t.nrOfTestsFailed;                                                    \
+    }                                                                          \
+  } while (false)
 
 // will fail if inp1 does not throw an exception
 #define EXPECT_DEATH(ACTION)                                                   \
-  try {                                                                        \
-    ACTION;                                                                    \
-    ++_t.nrOfTestsFailed;                                                      \
-  } catch (...) {                                                              \
-  }
+  do {                                                                         \
+    try {                                                                      \
+      ACTION;                                                                  \
+      ++_t.nrOfTestsFailed;                                                    \
+    } catch (...) {                                                            \
+    }                                                                          \
+  } while (false)
 
 // will add a fail if ACTION does not throw an exception or if the thrown
 // exception is not of type ERR_TYPE
 #define EXPECT_ERRORTYPE(ERR_TYPE, ACTION)                                     \
-  try {                                                                        \
-    ACTION;                                                                    \
-    ++_t.nrOfTestsFailed;                                                      \
-  } catch (ERR_TYPE & e) {                                                     \
-  } catch (...) {                                                              \
-    ++_t.nrOfTestsFailed;                                                      \
-  }
+  do {                                                                         \
+    try {                                                                      \
+      ACTION;                                                                  \
+      ++_t.nrOfTestsFailed;                                                    \
+    } catch (ERR_TYPE & e) {                                                   \
+    } catch (...) {                                                            \
+      ++_t.nrOfTestsFailed;                                                    \
+    }                                                                          \
+  } while (false)
 
 // this macro is used for the actual testing like so:
 // JTEST(name of your test){your code}
@@ -142,7 +155,7 @@ struct Test {
 };
 
 struct Subbatch {
-  bool addTest(Test test) {
+  bool addTest(Test &test) {
     tests.push_back(test);
     return true;
   };
@@ -191,7 +204,7 @@ struct Subbatch {
 };
 
 struct Batch {
-  bool addTest(const std::string &sbatchname, Test test) {
+  bool addTest(const std::string &sbatchname, Test &test) {
     auto sbatchIter = subbatches.find(sbatchname);
     if (sbatchIter == subbatches.end()) {
       subbatches[sbatchname] = Subbatch{};
@@ -226,7 +239,7 @@ struct Batch {
 
 struct _TestRegistry_Container {
   bool addTest(const std::string &batchname, const std::string &sbatchname,
-               Test test) {
+               Test &test) {
     auto batchIter = batches.find(batchname);
     if (batchIter == batches.end()) {
       batches[batchname] = Batch{};
@@ -274,7 +287,7 @@ struct _TestRegistry_Container {
 class TestRegistry {
 public:
   static bool registerTest(const std::string &batchname,
-                           const std::string &sbatchname, Test test) {
+                           const std::string &sbatchname, Test &&test) {
     getInstance().tests.addTest(batchname, sbatchname, test);
     return true;
   }
