@@ -10,6 +10,7 @@ add_executable(runAllTests
   death_test.cpp
   errtype_test.cpp
   flawed_test.cpp
+  subbatch_test.cpp
   main.cpp
 )
 

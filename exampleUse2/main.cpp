@@ -4,6 +4,7 @@
 #include "false_test.h"
 #include "flawed_test.h"
 #include "life_test.h"
+#include "subbatch_test.h"
 #include "true_test.h"
 
 int main(int argc, char *argv[]) {
