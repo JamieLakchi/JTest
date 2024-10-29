@@ -96,3 +96,5 @@ When a test is done running there can be 3 different of status messages:
 - `[FLAWED]`: The test has not completed, something threw an exception when it wasn't supposed to and terminated the test early
 
 If everything goes right, there will be a final line presenting a `[COMPLETE]` status message.
+
+***If `TERSE` is defined only failed and flawed tests will be printed fully, if all tests in a subbatch pass then `[REPORT] All expectations were met!` will be printed.***

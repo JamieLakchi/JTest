@@ -11,6 +11,7 @@
  *                               EXPECT_ERRORTYPE, added explicit constructor to
  *                               Test
  *  - 28/10/2024: Jamie Lakchi - created subbatch system
+ *  - 29/10/2024: Jamie Lakchi - added "Terse" printing system
  */
 
 #ifndef INC_JTEST_HPP
@@ -58,8 +59,10 @@
 #define PASSEDSTATUS CONSOLEGREEN "[PASSED]" CONSOLEDEFAULT
 #define FAILEDSTATUS CONSOLERED "[FAILED]" CONSOLEDEFAULT
 #define FLAWEDSTATUS CONSOLEYELLOW "[FLAWED]" CONSOLEDEFAULT
-#define COMPLETESTATUSF CONSOLERED "[RESULT]\tSome tests failed." CONSOLEDEFAULT
-#define COMPLETESTATUSP CONSOLEGREEN "[RESULT]\tAll test passed!" CONSOLEDEFAULT
+#define COMPLETEF CONSOLERED "[RESULT]\tSome tests failed." CONSOLEDEFAULT
+#define COMPLETEP CONSOLEGREEN "[RESULT]\tAll tests passed!" CONSOLEDEFAULT
+#define TERSEP                                                                 \
+  CONSOLEGREEN "[REPORT]\tAll expectations were met!" CONSOLEDEFAULT
 
 // the following expect_... will error outside of the context of a JTEST(){}
 // block
@@ -176,6 +179,14 @@ struct Subbatch {
       }
 
       std::cout << CONSOLECLEARLASTLINE;
+
+#ifdef TERSE
+      if (!(test.nrOfTestsFailed || fatal)) {
+        --failures;
+        continue;
+      }
+#endif
+
       if (test.nrOfTestsFailed) {
         std::cout << FAILEDSTATUS;
       } else if (fatal) {
@@ -192,8 +203,15 @@ struct Subbatch {
                                     : "no") +
               " check(s) failed";
       }
+
       std::cout << "\t" << test.name << ": " << mid << std::endl;
     }
+
+#ifdef TERSE
+    if (!failures) {
+      std::cout << TERSEP << std::endl;
+    }
+#endif
 
     std::cout << std::endl;
 
@@ -216,8 +234,14 @@ struct Batch {
   }
 
   int run() {
-    bool printSBNames =
+    bool printSBNames;
+
+    printSBNames =
         subbatches.size() > 1 || (*subbatches.begin()).first.size() != 0;
+
+#ifdef TERSE
+    printSBNames = true;
+#endif
 
     int failures = 0;
 
@@ -302,9 +326,9 @@ public:
     int failedTests = instance.tests.run();
 
     if (!failedTests) {
-      std::cout << COMPLETESTATUSP << std::endl;
+      std::cout << COMPLETEP << std::endl;
     } else {
-      std::cout << COMPLETESTATUSF << std::endl;
+      std::cout << COMPLETEF << std::endl;
     }
   }
 
