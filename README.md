@@ -14,32 +14,44 @@ I don't like GTest. There's some setup work to do, and you need to remake it if 
 To create a test, you first need to create the environment the test will be run in, this can be done using the `JTESTENV(_envname){ ... }` macro:
 
 ```cpp
+// creates an empty environment
 JTESTENV(EXPTRUE){};
 
+// creates an environment with empty setup and teardown functions.
 JTESTENV(THROWER) {
   SETUP{};
   TEARDOWN{};
 
 public:
-  void thrower() { throw 5; }
+// thrower and notthrower will be available in every test
+// within this environment
+  void thrower() { throw 5; } 
   void notthrower() {}
 };
 
+// creates environment with name ENV
 JTESTENV(ENV) {
+// before every test is run, an array will be allocated
+// and it will be set equal to {1, 2, 3}
   SETUP {
     numbers = new int[3];
     numbers[0] = 1;
     numbers[1] = 2;
     numbers[2] = 3;
   };
+// after every test the array will be deallocated
   TEARDOWN { delete[] numbers; };
 
 public:
-  int *numbers;
+  int *numbers; // numbers is freely accessible within every test
 };
 ```
 
-Environments don't need to contain anything, you can define whichever parts you like. The `SETUP` macro creates a function that will be run before every test in the environment, likewise the `TEARDOWN` macro creates a function that will be run after every test in the environment. All fields and methods defined withing an environment are directly available inside tests in the environment. Access specifiers `(public|protected|private)` can be used to further dictate which methods are available to the test. Anything that is `public|protected` can be accessed, anything `private` cannot be accessed.
+Environments don't need to contain anything, you can define whichever parts you like.
+
+The `SETUP` macro creates a function that will be run before every test in the environment, likewise the `TEARDOWN` macro creates a function that will be run after every test in the environment.
+
+All fields and methods defined withing an environment are directly available inside tests in the environment. Access specifiers `(public|protected|private)` can be used to further dictate which methods are available to the test. Anything that is `public|protected` can be accessed, anything `private` cannot be accessed.
 
 To create a test use the `JTEST(_envname, _testname){ ... }` macro:
 
