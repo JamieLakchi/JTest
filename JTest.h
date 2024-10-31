@@ -3,15 +3,7 @@
  * Author: Jamie Lakchi
  * Date: 21/10/2024
  * Description: These are the building blocks for a generic testing suite
- * Version: 1.1.0
- *
- * Change History:
- *  - 21/10/2024: Jamie Lakchi - Initial creation of the file
- *  - 22/10/2024: Jamie Lakchi - Removed nested try-catch block from
- *                               EXPECT_ERRORTYPE, added explicit constructor to
- *                               Test
- *  - 28/10/2024: Jamie Lakchi - created subbatch system
- *  - 29/10/2024: Jamie Lakchi - added "Terse" printing system
+ * Version: 2.0.0
  */
 
 #ifndef INC_JTEST_HPP
@@ -19,18 +11,16 @@
 
 #include <functional>
 #include <iostream>
+#include <list>
 #include <map>
-#include <set>
 #include <string>
-#include <vector>
 
 // simple token transformation functions
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define CONCATIFY(a, b) a##b
 #define CONCAT(a, b) CONCATIFY(a, b)
-
-#define GETFILE TOSTRING(__FILE__)
+#define CONCAT2(a, b, c) CONCAT(a##_, CONCAT(b##_, c))
 
 #ifdef NO_ANSI_CONSOLE
 #define CONSOLERED ""
@@ -71,7 +61,7 @@
 #define EXPECT_EQ(inp1, inp2)                                                  \
   do {                                                                         \
     if ((inp1) != (inp2)) {                                                    \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     }                                                                          \
   } while (false)
 
@@ -79,7 +69,7 @@
 #define EXPECT_TRUE(inp1)                                                      \
   do {                                                                         \
     if (!(inp1)) {                                                             \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     }                                                                          \
   } while (false)
 
@@ -87,7 +77,7 @@
 #define EXPECT_FALSE(inp1)                                                     \
   do {                                                                         \
     if ((inp1)) {                                                              \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     }                                                                          \
   } while (false)
 
@@ -97,7 +87,7 @@
     try {                                                                      \
       ACTION;                                                                  \
     } catch (...) {                                                            \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     }                                                                          \
   } while (false)
 
@@ -106,7 +96,7 @@
   do {                                                                         \
     try {                                                                      \
       ACTION;                                                                  \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     } catch (...) {                                                            \
     }                                                                          \
   } while (false)
@@ -117,242 +107,179 @@
   do {                                                                         \
     try {                                                                      \
       ACTION;                                                                  \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     } catch (ERR_TYPE & e) {                                                   \
     } catch (...) {                                                            \
-      ++_t.nrOfTestsFailed;                                                    \
+      t.incr();                                                                \
     }                                                                          \
   } while (false)
 
-// this macro is used for the actual testing like so:
-// JTEST(name of your test){your code}
-#define JTEST1(testname)                                                       \
-  void CONCAT(test_, testname)(Test & _t);                                     \
-  bool CONCAT(dummy_, testname) = TestRegistry::registerTest(                  \
-      GETFILE, Test{TOSTRING(testname), CONCAT(test_, testname)});             \
-  void CONCAT(test_, testname)(Test & _t)
+// jtest environment creator
+#define JTESTENV(_envname)                                                     \
+  class _envname : public jsuite::internal::_JTESTENV_base
 
-#define JTEST2(subbatchname, testname)                                         \
-  void CONCAT(test_, CONCAT(subbatchname, testname))(Test & _t);               \
-  bool CONCAT(dummy_, CONCAT(subbatchname, testname)) =                        \
-      TestRegistry::registerTest(                                              \
-          GETFILE, TOSTRING(subbatchname),                                     \
-          Test{TOSTRING(testname),                                             \
-               CONCAT(test_, CONCAT(subbatchname, testname))});                \
-  void CONCAT(test_, CONCAT(subbatchname, testname))(Test & _t)
+#define SETUP                                                                  \
+public:                                                                        \
+  virtual void setup() override
+#define TEARDOWN                                                               \
+public:                                                                        \
+  virtual void teardown() override
 
-#define JTESTSELECTOR(_1, _2, NAME, ...) NAME
+// jtest creator
+#define JTESTEXPAND(_envname, _testname, _testclassname, _testfuncname,        \
+                    _envfuncname, _dummyname, _boolname)                       \
+  class _testclassname : public _envname {                                     \
+  public:                                                                      \
+    _testclassname() = default;                                                \
+    void _testfuncname(jsuite::internal::test &t);                             \
+    void _envfuncname(jsuite::internal::test &t) {                             \
+      setup();                                                                 \
+      _testfuncname(t);                                                        \
+      teardown();                                                              \
+    }                                                                          \
+  };                                                                           \
+  void _dummyname(jsuite::internal::test &t) {                                 \
+    _testclassname suite{};                                                    \
+    suite._envfuncname(t);                                                     \
+  }                                                                            \
+  bool _boolname = jsuite::TestRegister::registerTest(                         \
+      TOSTRING(_envname),                                                      \
+      jsuite::internal::test{TOSTRING(_testname), _dummyname});                \
+  void _testclassname::_testfuncname(jsuite::internal::test &t)
 
-#define JTEST(...) JTESTSELECTOR(__VA_ARGS__, JTEST2, JTEST1)(__VA_ARGS__)
+#define JTEST(_envname, _testname)                                             \
+  JTESTEXPAND(_envname, _testname, CONCAT2(_envname, _testname, ),             \
+              CONCAT2(_envname, _testname, test),                              \
+              CONCAT2(_envname, _testname, env),                               \
+              CONCAT2(_envname, _testname, dummy),                             \
+              CONCAT2(_envname, _testname, _bool))
 
-struct Test;
-using TestFunction = std::function<void(Test &_t)>;
+// jsuite begin
 
-// this struct should never be created manually
-// it's elements are accessible in a JTEST block but shouldn't be changed
-struct Test {
-  Test(std::string &&s, TestFunction tfunc) : name(s), func(tfunc){};
-  std::string name;
-  TestFunction func;
-  int nrOfTestsFailed = 0;
-};
+namespace jsuite {
+namespace internal {
+struct test;
+}
 
-struct Subbatch {
-  bool addTest(Test &test) {
-    tests.push_back(test);
-    return true;
-  };
+using testfunc = std::function<void(internal::test &)>;
+using std::list;
+using std::map;
+using std::string;
 
-  int run() {
-    int failures = tests.size();
+namespace internal {
+class _JTESTENV_base {
+protected:
+  // prevent construction of objects of this type
+  _JTESTENV_base() = default;
+  _JTESTENV_base(void *){};
 
-    for (auto &test : tests) {
-      bool fatal = false;
-      std::string mid;
-
-      std::cout << RUNNINGSTATUS << "\t" << test.name << std::endl;
-
-      try {
-        test.func(test);
-      } catch (...) {
-        fatal = true;
-      }
-
-      std::cout << CONSOLECLEARLASTLINE;
-
-#ifdef TERSE
-      if (!(test.nrOfTestsFailed || fatal)) {
-        --failures;
-        continue;
-      }
-#endif
-
-      if (test.nrOfTestsFailed) {
-        std::cout << FAILEDSTATUS;
-      } else if (fatal) {
-        std::cout << FLAWEDSTATUS;
-      } else {
-        --failures;
-        std::cout << PASSEDSTATUS;
-      }
-
-      if (fatal) {
-        mid = "test threw exception";
-      } else {
-        mid = (test.nrOfTestsFailed ? std::to_string(test.nrOfTestsFailed)
-                                    : "no") +
-              " check(s) failed";
-      }
-
-      std::cout << "\t" << test.name << ": " << mid << std::endl;
-    }
-
-#ifdef TERSE
-    if (!failures) {
-      std::cout << TERSEP << std::endl;
-    }
-#endif
-
-    std::cout << std::endl;
-
-    return failures;
-  };
-
-  std::vector<Test> tests;
-};
-
-struct Batch {
-  bool addTest(const std::string &sbatchname, Test &test) {
-    auto sbatchIter = subbatches.find(sbatchname);
-    if (sbatchIter == subbatches.end()) {
-      subbatches[sbatchname] = Subbatch{};
-      return subbatches[sbatchname].addTest(test);
-    } else {
-      return (*sbatchIter).second.addTest(test);
-    }
-    return false;
-  }
-
-  int run() {
-    bool printSBNames;
-
-    printSBNames =
-        subbatches.size() > 1 || (*subbatches.begin()).first.size() != 0;
-
-#ifdef TERSE
-    printSBNames = true;
-#endif
-
-    int failures = 0;
-
-    for (auto &subbatch : subbatches) {
-      if (printSBNames) {
-        std::cout << CONSOLEBLUE << "< "
-                  << (subbatch.first.size() == 0 ? "MISC" : subbatch.first)
-                  << " >" << CONSOLEDEFAULT << std::endl;
-      }
-
-      failures += subbatch.second.run();
-    }
-
-    return failures;
-  }
-
-  std::map<std::string, Subbatch> subbatches;
-};
-
-struct _TestRegistry_Container {
-  bool addTest(const std::string &batchname, const std::string &sbatchname,
-               Test &test) {
-    auto batchIter = batches.find(batchname);
-    if (batchIter == batches.end()) {
-      batches[batchname] = Batch{};
-      return batches[batchname].addTest(sbatchname, test);
-    } else {
-      return (*batchIter).second.addTest(sbatchname, test);
-    }
-    return false;
-  };
-
-  int run() {
-    int failures = 0;
-    int maxBatchSizeName = 0;
-
-    auto maxBSN = [&](const int i) {
-      maxBatchSizeName = maxBatchSizeName > i ? maxBatchSizeName : i;
-    };
-
-    for (auto &batch : batches) {
-      maxBSN(batch.first.size());
-    }
-
-    auto batchNameExtension = [&](const int normalSize) {
-      return std::string(maxBatchSizeName - normalSize, '-');
-    };
-
-    for (auto &batch : batches) {
-      std::cout << CONSOLEMAGENTA << "---- " << batch.first << " ----"
-                << batchNameExtension(batch.first.size()) << CONSOLEDEFAULT
-                << std::endl;
-
-      failures += batch.second.run();
-    }
-
-    return failures;
-  }
-
-  std::map<std::string, Batch> batches;
-};
-
-// this will hold all of the tests
-// use TestRegistry::runAllTests() to run all of the tests
-// don't use registerTest manually, instead use the JTEST macros
-// don't create an object of this type
-class TestRegistry {
 public:
-  static bool registerTest(const std::string &batchname,
-                           const std::string &sbatchname, Test &&test) {
-    getInstance().tests.addTest(batchname, sbatchname, test);
-    return true;
+  virtual void setup() {}
+  virtual void teardown() {}
+};
+
+struct test {
+  test(string &&name, testfunc func) : t_name(name), t_func(func) {}
+
+  void operator()() { t_func(*this); }
+
+  inline void incr() { ++failures; }
+
+  inline void prettyPrint() {
+    std::cout << "\t" << CONSOLEBLUE << t_name << CONSOLEDEFAULT << ": ";
   }
 
-  static bool registerTest(const std::string &batchname, Test test) {
-    getInstance().tests.addTest(batchname, "", test);
-    return true;
-  }
+  unsigned short failures = 0;
+  string t_name;
+  testfunc t_func;
+};
 
-  static void runAllTests() {
-    auto &instance = getInstance();
-    int failedTests = instance.tests.run();
+}; // namespace internal
 
-    if (!failedTests) {
-      std::cout << COMPLETEP << std::endl;
+class TestRegister {
+public:
+  static bool registerTest(string &&envname, internal::test &&t) {
+    auto &_tests = getInstance()._tests;
+    auto _testiter = _tests.find(envname);
+    if (_testiter == _tests.end()) {
+      _tests[envname] = list{t};
     } else {
-      std::cout << COMPLETEF << std::endl;
+      (*_testiter).second.push_back(t);
     }
+    return true;
   }
 
   static void _dump() {
-    auto &instance = getInstance();
-    for (auto &bp : instance.tests.batches) {
-      std::cout << "batch: " << bp.first << std::endl;
-      for (auto &sbp : bp.second.subbatches) {
-        std::cout << "subbatch: " << sbp.first << std::endl;
-        for (auto &t : sbp.second.tests) {
-          std::cout << "test: " << t.name << std::endl;
-        }
+    auto &_tests = getInstance()._tests;
+    for (auto &p : _tests) {
+      std::cout << "ENV:\t" << p.first << std::endl;
+      for (auto &t : p.second) {
+        std::cout << "TEST:\t" << t.t_name << t.failures << std::endl;
       }
     }
   }
 
-private:
-  _TestRegistry_Container tests;
+  static void runAllTests() {
+    auto &_tests = getInstance()._tests;
+    bool completefail = false;
+    for (auto &p_envtestlist : _tests) {
+      std::cout << CONSOLEMAGENTA << "{ ENV:\t\t" << p_envtestlist.first << " }"
+                << CONSOLEDEFAULT << std::endl;
 
-  // this function only exists to adhere by the singleton design pattern
-  static TestRegistry &getInstance() {
-    static TestRegistry instance;
-    return instance;
+      int failingTests = p_envtestlist.second.size();
+
+      for (auto &t : p_envtestlist.second) {
+        std::cout << RUNNINGSTATUS << std::endl;
+
+        bool flawed = false;
+
+        try {
+          t();
+        } catch (...) {
+          flawed = true;
+        }
+
+        std::cout << CONSOLECLEARLASTLINE;
+
+        if (flawed || !t.failures) {
+          --failingTests;
+          continue;
+        } else if (flawed) {
+          std::cout << FLAWEDSTATUS;
+          t.prettyPrint();
+          std::cout << "an exception was thrown and not caught" << std::endl;
+        } else {
+          std::cout << FAILEDSTATUS;
+          t.prettyPrint();
+          std::cout << t.failures << " unexpected event(s)" << std::endl;
+        }
+
+        completefail = true;
+      }
+      if (!failingTests) {
+        std::cout << PASSEDSTATUS << "\t" << "No tests were flawed or failed!"
+                  << std::endl;
+      }
+      std::cout << std::endl;
+    }
+
+    std::cout << (completefail ? COMPLETEF : COMPLETEP) << std::endl;
   }
+
+private:
+  TestRegister() = default;
+  TestRegister(void *){};
+
+  static TestRegister &getInstance() {
+    static TestRegister t{};
+    return t;
+  }
+
+  map<string, list<internal::test>> _tests;
 };
+
+inline void RunAllTests() { TestRegister::runAllTests(); };
+
+} // namespace jsuite
 
 #endif
