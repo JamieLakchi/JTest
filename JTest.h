@@ -116,7 +116,7 @@
 
 // jtest environment creator
 #define JTESTENV(_envname)                                                     \
-  class _envname : public jsuite::internal::_JTESTENV_base
+  class _envname : public JTest::internal::_JTESTENV_base
 
 #define SETUP                                                                  \
 public:                                                                        \
@@ -131,21 +131,21 @@ public:                                                                        \
   class _testclassname : public _envname {                                     \
   public:                                                                      \
     _testclassname() = default;                                                \
-    void _testfuncname(jsuite::internal::test &t);                             \
-    void _envfuncname(jsuite::internal::test &t) {                             \
+    void _testfuncname(JTest::internal::test &t);                              \
+    void _envfuncname(JTest::internal::test &t) {                              \
       setup();                                                                 \
       _testfuncname(t);                                                        \
       teardown();                                                              \
     }                                                                          \
   };                                                                           \
-  void _dummyname(jsuite::internal::test &t) {                                 \
+  void _dummyname(JTest::internal::test &t) {                                  \
     _testclassname suite{};                                                    \
     suite._envfuncname(t);                                                     \
   }                                                                            \
-  bool _boolname = jsuite::TestRegister::registerTest(                         \
+  bool _boolname = JTest::TestRegister::registerTest(                          \
       TOSTRING(_envname),                                                      \
-      jsuite::internal::test{TOSTRING(_testname), _dummyname});                \
-  void _testclassname::_testfuncname(jsuite::internal::test &t)
+      JTest::internal::test{TOSTRING(_testname), _dummyname});                 \
+  void _testclassname::_testfuncname(JTest::internal::test &t)
 
 #define JTEST(_envname, _testname)                                             \
   JTESTEXPAND(_envname, _testname, CONCAT2(_envname, _testname, ),             \
@@ -154,9 +154,9 @@ public:                                                                        \
               CONCAT2(_envname, _testname, dummy),                             \
               CONCAT2(_envname, _testname, _bool))
 
-// jsuite begin
+// JTest begin
 
-namespace jsuite {
+namespace JTest {
 namespace internal {
 struct test;
 }
@@ -223,8 +223,8 @@ public:
     auto &_tests = getInstance()._tests;
     bool completefail = false;
     for (auto &p_envtestlist : _tests) {
-      std::cout << CONSOLEMAGENTA << "{ ENV:\t\t" << p_envtestlist.first << " }"
-                << CONSOLEDEFAULT << std::endl;
+      std::cout << CONSOLEMAGENTA << "STARTED:\t{ " << p_envtestlist.first
+                << " }" << CONSOLEDEFAULT << std::endl;
 
       int failingTests = p_envtestlist.second.size();
 
@@ -241,9 +241,14 @@ public:
 
         std::cout << CONSOLECLEARLASTLINE;
 
-        if (flawed || !t.failures) {
+        if (!flawed && !t.failures) {
           --failingTests;
+#ifdef TERSE
           continue;
+#endif
+          std::cout << PASSEDSTATUS;
+          t.prettyPrint();
+          std::cout << "all expectations were met!" << std::endl;
         } else if (flawed) {
           std::cout << FLAWEDSTATUS;
           t.prettyPrint();
@@ -256,10 +261,11 @@ public:
 
         completefail = true;
       }
+#ifdef TERSE
       if (!failingTests) {
-        std::cout << PASSEDSTATUS << "\t" << "No tests were flawed or failed!"
-                  << std::endl;
+        std::cout << TERSEP << std::endl;
       }
+#endif
       std::cout << std::endl;
     }
 
@@ -280,6 +286,6 @@ private:
 
 inline void RunAllTests() { TestRegister::runAllTests(); };
 
-} // namespace jsuite
+} // namespace JTest
 
 #endif

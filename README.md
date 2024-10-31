@@ -9,82 +9,75 @@ This is a small, fast, portable, and lightweight test suite contained entirely w
 I don't like GTest. There's some setup work to do, and you need to remake it if you want to run your tests on a different machine.
 
 
-## Usage
-
-### With CMake (see `exampleUse1/`):
-
-1. Create all your tests in .cpp files.
-2. In main(), add the line: `TestRegistry::runAllTests();` to run all the tests.
-3. Make your .cpp files and run the executable.
-
-To see an example output, in exampleUse1 run: 
-- `cmake . && make && clear && ./runAllTests` on Linux
-- `cmake -G "MinGW Makefiles" . && make && cls && runAllTests.exe` on Windows
-
-### Without CMake (see `exampleUse2/`): 
-1. create all your tests in .h files.
-2. Create one .cpp in which you include all the .h files.
-3. Create a main() function and add the line `TestRegistry::runAllTests();` to run all the tests.
-4. Compile the .cpp and run the executable.
-
-To see an example output, in exampleUse2 run:
-- `g++ main.cpp -o runAllTests && clear && ./runAllTests` on Linux
-- `g++ main.cpp -o runAllTests && cls && runAllTests.exe` on Windows
-
-***If your console does not support ANSI characters, compile the tests
-with the `NO_ANSI_CONSOLE` macro defined (if you're using g++, add
-`-DNO_ANSI_CONSOLE` as an option).***
-
 ## Creating Tests
 
-All tests in one file are combined into a batch, the name of the batch will
-be displayed before the tests are run.
-
-Batches are run in alphabetical order.
-Subbatches are also run in alphabetical order.
-
-To create a test use the `JTEST(test name){ ... }` macro:
+To create a test, you first need to create the environment the test will be run in, this can be done using the `JTESTENV(_envname){ ... }` macro:
 
 ```cpp
-JTEST(addition){
-  auto additionfunc = [](const int i1, const int i2){return i1 + i2;};
+JTESTENV(EXPTRUE){};
 
-  EXPECT_EQ(additionfunc(1, 1), 2);
+JTESTENV(THROWER) {
+  SETUP{};
+  TEARDOWN{};
+
+public:
+  void thrower() { throw 5; }
+  void notthrower() {}
+};
+
+JTESTENV(ENV) {
+  SETUP {
+    numbers = new int[3];
+    numbers[0] = 1;
+    numbers[1] = 2;
+    numbers[2] = 3;
+  };
+  TEARDOWN { delete[] numbers; };
+
+public:
+  int *numbers;
+};
+```
+
+Environments don't need to contain anything, you can define whichever parts you like. The `SETUP` macro creates a function that will be run before every test in the environment, likewise the `TEARDOWN` macro creates a function that will be run after every test in the environment. All fields and methods defined withing an environment are directly available inside tests in the environment. Access specifiers `(public|protected|private)` can be used to further dictate which methods are available to the test. Anything that is `public|protected` can be accessed, anything `private` cannot be accessed.
+
+To create a test use the `JTEST(_envname, _testname){ ... }` macro:
+
+```cpp
+// All of these could also be in the same file.
+
+// in EQENV.h
+JTESTENV(EQ) {
+  SETUP{};
+  TEARDOWN{};
+  int additionfunc(const int i1, const int i2) { return i1 + i2; }
+  int multfunc(const int i1, const int i2) { return i1 * i2; }
+};
+
+// in additionfunc.cpp
+JTEST(EQ, addition) {
   EXPECT_EQ(additionfunc(1, 2), 3);
   EXPECT_EQ(additionfunc(5, -2), 3);
   EXPECT_EQ(additionfunc(-2, 0), -2);
 }
+
+// in multfunc.cpp
+JTEST(EQ, multiply) {
+  EXPECT_EQ(multfunc(1, 1), -1);
+  EXPECT_EQ(multfunc(1, 2), -1);
+  EXPECT_EQ(multfunc(5, -2), -1);
+  EXPECT_EQ(multfunc(-2, 0), -1);
+}
 ```
 
-This example will perform 4 checks (1 per `EXPECT`).
+This example will perform 4 checks per test (1 per `EXPECT`).
 If 1 of these checks fails, the whole test will register as a failure and the
 console will say how many expectations weren't met.
 
-Or use the `JTEST(subbatch name, test name) { ... }` macro:
-
-```cpp
-JTEST(operator, lessthan){
-  EXPECT_TRUE(5 < 12);
-  EXPECT_TRUE(-6 < -3);
-}
-
-JTEST(operator, greaterthan){
-  EXPECT_TRUE(4 > 3);
-  EXPECT_TRUE(-9 > -17);
-}
-```
-
-This example will also perform 4 checks (over 2 tests).
-If a test fails only that test will register as a failure, not the entire subbatch.
-
-Before a subbatch is run it's name will be printed as `< NAME >`.
-If a batch has some tests that are part of a subbatch and tests that aren't part of one,
-the tests outside of a subbatch will be grouped together into a subbatch called `< MISC >`.
-
 There are 6 `EXPECT` macros you can use:
 - `EXPECT_EQ(inp1, inp2)`: will add a fail if (inp1) != (inp2)
-- `EXPECT_TRUE(inp1)`: will add a fail if !(inp1) == true
-- `EXPECT_FALSE(inp1)`: will add a fail if (inp1) == true
+- `EXPECT_TRUE(inp1)`: will add a fail if !(inp1) evaluates to true
+- `EXPECT_FALSE(inp1)`: will add a fail if (inp1) evaluates to true
 - `EXPECT_LIFE(ACTION)`: will add a fail if ACTION throws an exception
 - `EXPECT_DEATH(ACTION)`: will add a fail if ACTION doesn't throw an exception
 - `EXPECT_ERRORTYPE(ERR_TYPE, ACTION)`: will add a fail if ACTION does not throw an exception or if the thrown  exception is not of type ERR_TYPE
@@ -97,4 +90,16 @@ When a test is done running there can be 3 different of status messages:
 
 If everything goes right, there will be a final line presenting a `[COMPLETE]` status message.
 
-***If `TERSE` is defined only failed and flawed tests will be printed fully, if all tests in a subbatch pass then `[REPORT] All expectations were met!` will be printed.***
+## Usage
+
+To see an example output, in `example/` run: 
+- `cmake . && make && ./runAllTests` on Linux
+- `cmake -G "MinGW Makefiles" . && make && runAllTests.exe` on Windows
+- `g++ -o runAllTests *.cpp && ./runAllTests` on Linux
+- `g++ -o *.cpp runAllTests && runAllTests.exe` on Windows
+
+***If your console does not support ANSI characters, compile the tests
+with the `NO_ANSI_CONSOLE` macro defined (if you're using g++, add
+`-DNO_ANSI_CONSOLE` as an option).***
+
+***Compile the tests with the `TERSE` macro defined to get a shorter output, only failed tests will appear and if none fail only one line will be printed saying so.***
