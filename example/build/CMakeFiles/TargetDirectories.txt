@@ -1,3 +1,0 @@
-/home/scidae/petprojects/JTEST/JENV/example/build/CMakeFiles/runAllTests.dir
-/home/scidae/petprojects/JTEST/JENV/example/build/CMakeFiles/edit_cache.dir
-/home/scidae/petprojects/JTEST/JENV/example/build/CMakeFiles/rebuild_cache.dir

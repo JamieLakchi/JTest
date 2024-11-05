@@ -3,7 +3,7 @@
  * Author: Jamie Lakchi
  * Date: 21/10/2024
  * Description: These are the building blocks for a generic testing suite
- * Version: 2.0.0
+ * Version: 2.0.1
  */
 
 #ifndef INC_JTEST_HPP
@@ -219,7 +219,7 @@ public:
     }
   }
 
-  static void runAllTests() {
+  static int runAllTests() {
     auto &_tests = getInstance()._tests;
     bool completefail = false;
     for (auto &p_envtestlist : _tests) {
@@ -270,6 +270,7 @@ public:
     }
 
     std::cout << (completefail ? COMPLETEF : COMPLETEP) << std::endl;
+    return completefail;
   }
 
 private:
@@ -284,7 +285,7 @@ private:
   map<string, list<internal::test>> _tests;
 };
 
-inline void RunAllTests() { TestRegister::runAllTests(); };
+inline int RunAllTests() { return TestRegister::runAllTests(); };
 
 } // namespace JTest
 
