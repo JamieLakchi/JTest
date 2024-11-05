@@ -253,13 +253,14 @@ public:
           std::cout << FLAWEDSTATUS;
           t.prettyPrint();
           std::cout << "an exception was thrown and not caught" << std::endl;
+          completefail = true;
         } else {
           std::cout << FAILEDSTATUS;
           t.prettyPrint();
           std::cout << t.failures << " unexpected event(s)" << std::endl;
+          completefail = true;
         }
 
-        completefail = true;
       }
 #ifdef TERSE
       if (!failingTests) {
